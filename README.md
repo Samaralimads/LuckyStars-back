@@ -26,38 +26,6 @@ Sources/LuckyStarsBack/
 └── entrypoint.swift
 ```
 
-## Requirements
-
-- Swift 6 / a recent Xcode with the matching toolchain
-- A reachable MySQL server (local or remote)
-
-## Configuration
-
-The project reads its configuration from environment variables (see `configure.swift`):
-
-| Variable         | Purpose                                              | Required |
-|------------------|--------------------------------------------------------|:--------:|
-| `DB_HOST`        | MySQL host                                              | ✅ |
-| `DB_PORT`        | MySQL port (defaults to the standard MySQL port)        | – |
-| `DB_USERNAME`    | MySQL user                                              | ✅ |
-| `DB_PASSWORD`    | MySQL password                                          | ✅ |
-| `DB_NAME`        | Database name                                           | ✅ |
-| `JWT_SECRET`     | HMAC (SHA-256) secret used to sign/verify JWTs          | ✅ |
-| `BREVO_API_KEY`  | Brevo API key, used to send password-reset emails       | for `PasswordResetController` |
-| `BREVO_SENDER`   | Sender address for password-reset emails                | for `PasswordResetController` |
-
-⚠️ There are no Fluent migrations in this project: the database schema has to be created manually
-(from the MPD SQL script — see the project's MERISE design) before starting the server. The Fluent
-models in `Models/` must stay in sync with that schema.
-
-## Running the project
-
-```bash
-swift build      # build
-swift run        # start the server (http://127.0.0.1:8080 by default)
-swift test       # run tests
-```
-
 ## Routes overview
 
 | Resource | Method & path | Protected (JWT) |
