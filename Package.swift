@@ -2,7 +2,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "TogetherBack",
+    name: "LuckyStarsBack",
     platforms: [
        .macOS(.v13)
     ],
@@ -23,7 +23,7 @@ let package = Package(
     ],
     targets: [
         .executableTarget(
-            name: "TogetherBack",
+            name: "LuckyStarsBack",
             dependencies: [
                 .product(name: "Fluent", package: "fluent"),
                 .product(name: "FluentMySQLDriver", package: "fluent-mysql-driver"),
@@ -36,9 +36,9 @@ let package = Package(
             swiftSettings: swiftSettings
         ),
         .testTarget(
-            name: "TogetherBackTests",
+            name: "LuckyStarsBackTests",
             dependencies: [
-                .target(name: "TogetherBack"),
+                .target(name: "LuckyStarsBack"),
                 .product(name: "VaporTesting", package: "vapor"),
             ],
             swiftSettings: swiftSettings

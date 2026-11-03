@@ -1,6 +1,6 @@
-# TogetherBack
+# LuckyStarsBack
 
-RESTful API for **Together**, an iOS app that helps couples find and plan activities to do together.
+RESTful API for **Lucky Stars**, an iOS app that helps couples find and plan activities to do together.
 This backend handles user accounts, partner pairing, the activity catalog, proposing/responding to
 planned activities, important dates, and password reset.
 
@@ -15,7 +15,7 @@ planned activities, important dates, and password reset.
 ## Project structure
 
 ```
-Sources/TogetherBack/
+Sources/LuckyStarsBack/
 ├── Auth/                 JWTMiddleware, UserPayload
 ├── Controllers/          one route collection per resource (User, Couple, Activity, PlannedActivity, ImportantDate, Favorite, PasswordReset)
 ├── DTOs/                 request/response JSON shapes (decoupled from Fluent models)
