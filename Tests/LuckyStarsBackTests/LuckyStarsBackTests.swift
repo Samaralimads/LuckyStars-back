@@ -9,6 +9,7 @@ struct LuckyStarsBackTests {
     private func withApp(_ test: (Application) async throws -> ()) async throws {
         let app = try await Application.make(.testing)
         do {
+            await RateLimiter.shared.reset()
             try await configure(app)
             try await app.autoMigrate()
             try await test(app)
@@ -31,10 +32,9 @@ struct LuckyStarsBackTests {
         }
     }
 
-    // NOTE: this suite runs against a real, shared dev database (no isolated
-    // test DB / migrations to reset between runs), so every test uses
-    // randomly-suffixed data and cleans up after itself rather than assuming
-    // an empty table or asserting on exact row counts.
+    // NOTE: this suite runs against the TEST_DB_* database (never the real one; see README),
+    // which is shared between runs, so every test uses randomly-suffixed data and cleans up
+    // after itself rather than assuming an empty table or asserting on exact row counts.
 
     @Test("Listing categories includes newly created ones")
     func getAllCategories() async throws {
@@ -69,7 +69,7 @@ struct LuckyStarsBackTests {
             let request = RegisterRequest(
                 firstName: "Sam",
                 birthDate: "1995-05-20",
-                email: "sam-\(UUID().uuidString)@example.com",
+                email: "sam-\(UUID().uuidString.lowercased())@example.com",
                 password: "Password1"
             )
 
@@ -99,7 +99,7 @@ struct LuckyStarsBackTests {
     @Test("Registering with an email already in use is rejected")
     func registerDuplicateEmail() async throws {
         try await withApp { app in
-            let email = "dup-\(UUID().uuidString)@example.com"
+            let email = "dup-\(UUID().uuidString.lowercased())@example.com"
             let existing = User(firstName: "Sam", birthDate: Date(), email: email, password: "hashed")
             try await existing.save(on: app.db)
 
@@ -131,7 +131,7 @@ struct LuckyStarsBackTests {
             let request = RegisterRequest(
                 firstName: "Sam",
                 birthDate: "1995-05-20",
-                email: "delete-me-\(UUID().uuidString)@example.com",
+                email: "delete-me-\(UUID().uuidString.lowercased())@example.com",
                 password: "Password1"
             )
 

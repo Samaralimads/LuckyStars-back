@@ -6,6 +6,7 @@
 //
 
 import Vapor
+import Fluent
 import JWT
 
 struct JWTMiddleware: AsyncMiddleware {
@@ -14,7 +15,21 @@ struct JWTMiddleware: AsyncMiddleware {
             throw Abort(.unauthorized, reason: "Missing token.")
         }
 
-        let payload = try await request.jwt.verify(token, as: UserPayload.self)
+        // A bad, tampered or expired token is a 401 (the app logs out on 401), never a 500.
+        let payload: UserPayload
+        do {
+            payload = try await request.jwt.verify(token, as: UserPayload.self)
+        } catch {
+            throw Abort(.unauthorized, reason: "Invalid or expired token.")
+        }
+
+        // A token outlives the account it was issued for (30 days): refuse it once the user is gone.
+        guard let userId = UUID(uuidString: payload.userId),
+              try await User.find(userId, on: request.db) != nil
+        else {
+            throw Abort(.unauthorized, reason: "Invalid or expired token.")
+        }
+
         request.auth.login(payload)
 
         return try await next.respond(to: request)

@@ -12,6 +12,11 @@ struct CreateCoupleRequest: Content {
     let relationshipStartDate: String
 }
 
+// MARK: - Update Couple Request (either partner)
+struct UpdateCoupleRequest: Content {
+    let relationshipStartDate: String
+}
+
 // MARK: - Join Request (User 2)
 struct JoinCoupleRequest: Content {
     let invitationCode: String

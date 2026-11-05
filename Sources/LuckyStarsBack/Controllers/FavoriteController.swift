@@ -31,6 +31,9 @@ struct FavoriteController: RouteCollection {
 
         let activityIds = favorites.map { $0.activityId }
 
+        // `IN ()` with no values is invalid SQL: nothing saved means nothing to look up.
+        guard !activityIds.isEmpty else { return [] }
+
         let activities = try await Activity.query(on: req.db)
             .filter(\.$id ~~ activityIds)
             .all()
@@ -60,18 +63,24 @@ struct FavoriteController: RouteCollection {
             throw Abort(.notFound, reason: "Activity not found.")
         }
 
-        // Check not already favorited
+        // Saving something that is already saved is fine: the end state is what the user asked for
+        // (a double tap must not show an error).
         let existing = try await FavoriteActivity.query(on: req.db)
             .filter(\.$userId == userId)
             .filter(\.$activityId == activityId)
             .first()
 
         guard existing == nil else {
-            throw Abort(.conflict, reason: "Activity already in favorites.")
+            return .ok
         }
 
         let favorite = FavoriteActivity(userId: userId, activityId: activityId)
-        try await favorite.save(on: req.db)
+        do {
+            try await favorite.save(on: req.db)
+        } catch let error as any DatabaseError where error.isConstraintFailure {
+            // Two taps at once: the unique key (user, activity) let only the first one in.
+            return .ok
+        }
 
         return .created
     }

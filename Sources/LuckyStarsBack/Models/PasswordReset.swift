@@ -26,6 +26,10 @@ final class PasswordReset: Model, @unchecked Sendable {
     @Field(key: "used")
     var used: Bool
 
+    /// Wrong guesses so far. The code is locked after too many (see PasswordResetController).
+    @Field(key: "attempts")
+    var attempts: Int
+
     @Timestamp(key: "created_at", on: .create)
     var createdAt: Date?
 
@@ -37,5 +41,6 @@ final class PasswordReset: Model, @unchecked Sendable {
         self.code = code
         self.expiresAt = expiresAt
         self.used = false
+        self.attempts = 0
     }
 }
