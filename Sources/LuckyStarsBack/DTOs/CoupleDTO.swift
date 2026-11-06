@@ -37,4 +37,6 @@ struct CoupleResponse: Content {
 struct PartnerResponse: Content {
     let id: UUID
     let firstName: String
+    /// Whether the partner has a profile photo (download it from GET /couples/me/partner/picture).
+    let hasProfilePicture: Bool
 }

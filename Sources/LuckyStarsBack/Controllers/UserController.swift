@@ -90,7 +90,12 @@ struct UserController: RouteCollection {
             throw Abort(.unauthorized, reason: "Invalid email or password.")
         }
 
-        guard try Bcrypt.verify(body.password, created: user.password) else {
+        // An account created with Sign in with Apple has no password: same answer, same timing.
+        guard let hash = user.password else {
+            _ = try? Bcrypt.verify(body.password, created: Self.dummyHash)
+            throw Abort(.unauthorized, reason: "Invalid email or password.")
+        }
+        guard try Bcrypt.verify(body.password, created: hash) else {
             throw Abort(.unauthorized, reason: "Invalid email or password.")
         }
 
@@ -133,9 +138,8 @@ struct UserController: RouteCollection {
             try Validation.checkName(trimmed)
             user.firstName = trimmed
         }
-        if let profilePicture = body.profilePicture {
-            user.profilePicture = profilePicture
-        }
+        // The photo is only set by PUT /users/me/picture: it is a file name the server decides, so a
+        // client must not be able to write it here.
         if let rawEmail = body.email {
             let email = rawEmail.normalizedEmail
             // Only a *changed* email can clash with another account (the app sends the current one on every save).
@@ -174,6 +178,11 @@ struct UserController: RouteCollection {
             throw Abort(.notFound, reason: "User not found.")
         }
 
+        // Apple requires the link to be revoked when the account is deleted.
+        if let refreshToken = user.appleRefreshToken {
+            await AppleAuthService.revoke(refreshToken: refreshToken, client: req.application.client, logger: req.logger)
+        }
+
         try await req.db.transaction { db in
             if let couple = try await Couple.forUser(uuid, on: db) {
                 let partnerId = couple.partner1Id == uuid ? couple.partner2Id : couple.partner1Id
@@ -205,6 +214,9 @@ struct UserController: RouteCollection {
             try await user.delete(on: db)
         }
 
+        // Their photo goes with the account.
+        PictureStorage.delete(for: uuid, app: req.application)
+
         return .noContent
     }
 
@@ -222,8 +234,12 @@ struct UserController: RouteCollection {
 
         let body = try req.content.decode(ChangePasswordRequest.self)
 
+        guard let hash = user.password else {
+            throw Abort(.badRequest, reason: "Your account uses Sign in with Apple, so it has no password to change.")
+        }
+
         // 400, not 401: the app treats any 401 as "session expired" and logs the user out.
-        guard try Bcrypt.verify(body.currentPassword, created: user.password) else {
+        guard try Bcrypt.verify(body.currentPassword, created: hash) else {
             throw Abort(.badRequest, reason: "Current password is incorrect.")
         }
         try Validation.checkPassword(body.newPassword)

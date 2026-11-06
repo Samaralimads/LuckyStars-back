@@ -32,9 +32,10 @@ struct LuckyStarsBackTests {
         }
     }
 
-    // NOTE: this suite runs against the TEST_DB_* database (never the real one; see README),
-    // which is shared between runs, so every test uses randomly-suffixed data and cleans up
-    // after itself rather than assuming an empty table or asserting on exact row counts.
+    // NOTE: this suite runs against a real, shared dev database (no isolated
+    // test DB / migrations to reset between runs), so every test uses
+    // randomly-suffixed data and cleans up after itself rather than assuming
+    // an empty table or asserting on exact row counts.
 
     @Test("Listing categories includes newly created ones")
     func getAllCategories() async throws {

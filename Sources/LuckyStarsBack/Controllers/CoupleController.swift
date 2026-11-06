@@ -20,6 +20,7 @@ struct CoupleController: RouteCollection {
             .post("join", use: joinCouple)
         couples.get("me", use: getMyCouple)
         couples.put("me", use: updateMyCouple)
+        couples.delete("me", use: unpair)
     }
 
     // MARK: - GET /couples/me/invitation
@@ -131,6 +132,34 @@ struct CoupleController: RouteCollection {
         return try await buildResponse(for: couple, currentUserId: userId, db: req.db)
     }
 
+    // MARK: - DELETE /couples/me (unpair)
+    /// Ends the couple for both people. Each starts fresh: no partner, and a free pairing code.
+    /// The dates they planned together are not erased: the database unlinks them from the couple
+    /// (`planned_activity.couple_id` becomes empty), so nobody can see them any more.
+    @Sendable
+    func unpair(req: Request) async throws -> HTTPStatus {
+        let userId = try currentUserId(req)
+
+        guard let couple = try await Couple.forUser(userId, on: req.db) else {
+            throw Abort(.notFound, reason: "You are not part of a couple yet.")
+        }
+        guard let partnerId = couple.partner1Id == userId ? couple.partner2Id : couple.partner1Id else {
+            throw Abort(.conflict, reason: "You don't have a partner to unpair from.")
+        }
+
+        try await req.db.transaction { db in
+            // One of the two pairing codes was used up by the pairing: free both, so each person can pair again.
+            try await Invitation.query(on: db)
+                .filter(\.$userId ~~ [userId, partnerId])
+                .set(\.$codeUsed, to: false)
+                .update()
+
+            try await couple.delete(on: db)
+        }
+
+        return .noContent
+    }
+
     // MARK: - Helpers
     private func currentUserId(_ req: Request) throws -> UUID {
         let payload = try req.auth.require(UserPayload.self)
@@ -164,7 +193,11 @@ struct CoupleController: RouteCollection {
 
         var partnerResponse: PartnerResponse? = nil
         if let partnerId, let partner = try await User.find(partnerId, on: db) {
-            partnerResponse = PartnerResponse(id: try partner.requireID(), firstName: partner.firstName)
+            partnerResponse = PartnerResponse(
+                id: try partner.requireID(),
+                firstName: partner.firstName,
+                hasProfilePicture: partner.profilePicture != nil
+            )
         }
 
         return CoupleResponse(

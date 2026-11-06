@@ -13,3 +13,6 @@ default.profraw
 
 # macOS
 .DS_Store
+
+# Uploaded profile photos (personal data: never commit)
+Uploads/

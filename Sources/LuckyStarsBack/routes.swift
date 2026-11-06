@@ -13,5 +13,7 @@ func routes(_ app: Application) throws {
     try app.register(collection: ImportantDateController())
     try app.register(collection: FavoriteController())
     try app.register(collection: PasswordResetController())
+    try app.register(collection: AppleAuthController())
+    try app.register(collection: ProfilePictureController())
 
 }
