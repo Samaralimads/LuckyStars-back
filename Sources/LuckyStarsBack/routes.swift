@@ -15,5 +15,6 @@ func routes(_ app: Application) throws {
     try app.register(collection: PasswordResetController())
     try app.register(collection: AppleAuthController())
     try app.register(collection: ProfilePictureController())
+    try app.register(collection: DeviceController())
 
 }

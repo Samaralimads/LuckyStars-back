@@ -62,7 +62,7 @@ struct ProfilePictureController: RouteCollection {
     @Sendable
     func getMine(req: Request) async throws -> Response {
         let userId = try currentUserId(req)
-        return try picture(of: userId, req: req)
+        return try await picture(of: userId, req: req)
     }
 
     // MARK: - DELETE /users/me/picture
@@ -89,7 +89,7 @@ struct ProfilePictureController: RouteCollection {
         guard let partnerId = couple.partner1Id == userId ? couple.partner2Id : couple.partner1Id else {
             throw Abort(.notFound, reason: "You don't have a partner yet.")
         }
-        return try picture(of: partnerId, req: req)
+        return try await picture(of: partnerId, req: req)
     }
 
     // MARK: - Helpers
@@ -101,12 +101,12 @@ struct ProfilePictureController: RouteCollection {
         return userId
     }
 
-    private func picture(of userId: UUID, req: Request) throws -> Response {
+    private func picture(of userId: UUID, req: Request) async throws -> Response {
         let path = PictureStorage.path(for: userId, app: req.application)
         guard FileManager.default.fileExists(atPath: path) else {
             throw Abort(.notFound, reason: "No photo.")
         }
-        let response = req.fileio.streamFile(at: path)
+        let response = try await req.fileio.asyncStreamFile(at: path)
         response.headers.replaceOrAdd(name: .cacheControl, value: "private, no-cache")
         return response
     }

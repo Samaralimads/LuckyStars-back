@@ -105,6 +105,9 @@ struct CoupleController: RouteCollection {
             throw Abort(.internalServerError, reason: "Couldn't join the couple. Please try again.")
         }
 
+        // Tell the person who shared the code (a push notification, in the background).
+        PushService.notifyPartner(of: userId, event: .paired, app: req.application)
+
         return try await fetchCoupleForUser(userId: userId, db: req.db)
     }
 
@@ -133,8 +136,9 @@ struct CoupleController: RouteCollection {
     }
 
     // MARK: - DELETE /couples/me (unpair)
-    /// Ends the couple for both people. Each starts fresh: no partner, and a free pairing code.
-    /// The dates they planned together are not erased: the database unlinks them from the couple
+    /// Ends the couple for both people. Each starts fresh, with a couple of their own (just themselves in it,
+    /// like a new account that hasn't been paired) and a free pairing code. The anniversary date is kept.
+    /// The dates they planned together are not erased: the database unlinks them from the old couple
     /// (`planned_activity.couple_id` becomes empty), so nobody can see them any more.
     @Sendable
     func unpair(req: Request) async throws -> HTTPStatus {
@@ -147,6 +151,8 @@ struct CoupleController: RouteCollection {
             throw Abort(.conflict, reason: "You don't have a partner to unpair from.")
         }
 
+        let anniversary = couple.relationshipStartDate
+
         try await req.db.transaction { db in
             // One of the two pairing codes was used up by the pairing: free both, so each person can pair again.
             try await Invitation.query(on: db)
@@ -155,6 +161,11 @@ struct CoupleController: RouteCollection {
                 .update()
 
             try await couple.delete(on: db)
+
+            // Everybody always has a couple: alone in it until a partner joins. One new one for each person.
+            for person in [userId, partnerId] {
+                try await Couple(partner1Id: person, partner2Id: nil, relationshipStartDate: anniversary).save(on: db)
+            }
         }
 
         return .noContent

@@ -15,7 +15,6 @@ struct JWTMiddleware: AsyncMiddleware {
             throw Abort(.unauthorized, reason: "Missing token.")
         }
 
-        // A bad, tampered or expired token is a 401 (the app logs out on 401), never a 500.
         let payload: UserPayload
         do {
             payload = try await request.jwt.verify(token, as: UserPayload.self)
@@ -23,7 +22,6 @@ struct JWTMiddleware: AsyncMiddleware {
             throw Abort(.unauthorized, reason: "Invalid or expired token.")
         }
 
-        // A token outlives the account it was issued for (30 days): refuse it once the user is gone.
         guard let userId = UUID(uuidString: payload.userId),
               try await User.find(userId, on: request.db) != nil
         else {

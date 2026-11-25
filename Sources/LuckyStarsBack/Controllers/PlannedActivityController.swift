@@ -46,6 +46,10 @@ struct PlannedActivityController: RouteCollection {
         )
 
         try await planned.save(on: req.db)
+
+        // Tell the partner (a push notification, in the background).
+        PushService.notifyPartner(of: userId, event: .proposed, app: req.application)
+
         return try await buildResponse(for: planned, db: req.db)
     }
 
@@ -71,13 +75,16 @@ struct PlannedActivityController: RouteCollection {
     // MARK: - PUT /planned-activities/:id/accept
     @Sendable
     func accept(req: Request) async throws -> PlannedActivityResponse {
-        try await req.db.transaction { db in
+        let response = try await req.db.transaction { db in
             let planned = try await getAndValidate(req: req, db: db)
             planned.bookingStatus = "accepted"
             planned.responseDate = Date()
             try await planned.save(on: db)
             return try await buildResponse(for: planned, db: db)
         }
+
+        PushService.notifyPartner(of: try currentUserId(req), event: .accepted, app: req.application)
+        return response
     }
 
     // MARK: - PUT /planned-activities/:id/decline
@@ -89,7 +96,7 @@ struct PlannedActivityController: RouteCollection {
             : try req.content.decode(DeclineActivityRequest.self).note
         try validateNote(note)
 
-        return try await req.db.transaction { db in
+        let response = try await req.db.transaction { db in
             let planned = try await getAndValidate(req: req, db: db)
             planned.bookingStatus = "rejected"
             planned.responseDate = Date()
@@ -97,6 +104,9 @@ struct PlannedActivityController: RouteCollection {
             try await planned.save(on: db)
             return try await buildResponse(for: planned, db: db)
         }
+
+        PushService.notifyPartner(of: try currentUserId(req), event: .declined, app: req.application)
+        return response
     }
 
     // MARK: - PUT /planned-activities/:id/reschedule
@@ -111,7 +121,7 @@ struct PlannedActivityController: RouteCollection {
 
         // Both steps or neither: otherwise a failure in between leaves the old proposal
         // rejected and no new one.
-        return try await req.db.transaction { db in
+        let response = try await req.db.transaction { db in
             let planned = try await getAndValidate(req: req, db: db)
 
             planned.bookingStatus = "rejected"
@@ -132,6 +142,9 @@ struct PlannedActivityController: RouteCollection {
             try await newProposal.save(on: db)
             return try await buildResponse(for: newProposal, db: db)
         }
+
+        PushService.notifyPartner(of: userId, event: .rescheduled, app: req.application)
+        return response
     }
 
     // MARK: - Helpers
